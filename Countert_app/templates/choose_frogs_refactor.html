@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Selection</title>
+    <script>
+        let images = [];
+        let activeImage1 = '';
+        let activeImage2 = '';
+
+        function getRandomImage(exclude) {
+            let randomImage;
+            do {
+                randomImage = images[Math.floor(Math.random() * images.length)];
+            } while (randomImage === exclude);
+            return randomImage;
+        }
+
+        function sendSelection(clickedImage, notClickedImage) {
+            const timestamp = new Date().toISOString();
+
+            const data = {
+                clicked_image: clickedImage,
+                not_clicked_image: notClickedImage,
+                timestamp: timestamp
+            };
+
+            fetch('/log_selection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => console.log('Success:', data))
+            .catch(error => console.error('Error:', error));
+
+            // Update the not clicked image with a new random one
+            const newContender = getRandomImage(clickedImage);
+            if (notClickedImage === activeImage1) {
+                activeImage1 = newContender;
+                document.getElementById('image1').src = newContender;
+            } else {
+                activeImage2 = newContender;
+                document.getElementById('image2').src = newContender;
+            }
+        }
+
+        window.onload = function() {
+            fetch('/get_images')
+            .then(response => response.json())
+            .then(data => {
+                images = data;
+                activeImage1 = getRandomImage(null);
+                activeImage2 = getRandomImage(activeImage1);
+                document.getElementById('image1').src = activeImage1;
+                document.getElementById('image2').src = activeImage2;
+            })
+            .catch(error => console.error('Error:', error));
+        };
+    </script>
+</head>
+<body>
+    <div>
+        <img id="image1" src="" alt="Image 1" onclick="sendSelection(activeImage1, activeImage2)">
+        <img id="image2" src="" alt="Image 2" onclick="sendSelection(activeImage2, activeImage1)">
+    </div>
+</body>
+</html>

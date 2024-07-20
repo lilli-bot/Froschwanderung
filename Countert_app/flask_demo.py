@@ -1,5 +1,8 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import redis
+import os
+import csv
+import datetime
 
 app = Flask(__name__)
 r = redis.Redis(host="localhost", port=6379, db=0)
@@ -9,11 +12,13 @@ if not r.exists("likes"):
     likes = {str(i): 0 for i in range(1, 154)}
     r.hmset("likes", likes)
 
+IMAGE_FOLDER = 'Countert_app/static/frogs'
+LOGGING_FOLDER = 'results/'
 
 @app.route("/")
 def index():
     counter = r.hgetall("likes")
-    return render_template("choose_frogs.html", counters=counter)
+    return render_template("choose_frogs_refactor.html", counters=counter)
 
 
 @app.route("/incr", methods=["POST"])
@@ -29,6 +34,44 @@ def incr():
     except Exception as e:
         print(f"Error in incr route: {e}")
         return jsonify(success=False, error=str(e)), 500
+    
+
+@app.route('/get_images', methods=['GET'])
+def get_images():
+    images = [f for f in os.listdir(IMAGE_FOLDER) if f.endswith('.png')]
+    #TODO fix this path so it is relative as well (and not hard-coded)
+    image_urls = [f'/static/frogs/{image}' for image in images]
+    return jsonify(image_urls)
+
+# Serve images from the IMAGE_FOLDER
+@app.route('/images/<filename>')
+def serve_image(filename):
+    return send_from_directory(IMAGE_FOLDER, filename)
+
+@app.route('/log_selection', methods=['POST'])
+def log_selection():
+    data = request.json
+    clicked_image = data.get('clicked_image')
+    not_clicked_image = data.get('not_clicked_image')
+    timestamp = data.get('timestamp')
+
+    # Log the event
+    csv_string = f"{clicked_image},{not_clicked_image},{timestamp}"
+
+    # Create a new CSV file if it does not exist
+    log_file_name = f"logs_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')}.csv"
+    log_file_path = LOGGING_FOLDER + log_file_name
+    if not os.path.exists(log_file_path):
+        with open(log_file_path, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['clicked_image', 'not_clicked_image', 'timestamp'])
+
+
+    with open(log_file_path, "a") as f:
+        f.write(csv_string + '\n')
+            
+
+    return jsonify({'status': 'success'}), 200
 
 
 if __name__ == "__main__":
