@@ -7,9 +7,24 @@
         let activeImage1 = '';
         let activeImage2 = '';
 
+        // Initialise the frontend variables
+        window.onload = function() {
+            fetch('/get_images')
+            .then(response => response.json())
+            .then(data => {
+                images = data;
+                activeImage1 = getRandomImage(null);
+                activeImage2 = getRandomImage(activeImage1);
+                document.getElementById('image1').src = activeImage1;
+                document.getElementById('image2').src = activeImage2;
+            })
+            .catch(error => console.error('Error:', error));
+        };
+
         function getRandomImage(exclude) {
             let randomImage;
             do {
+                // generate a random index for the array of all available images.
                 randomImage = images[Math.floor(Math.random() * images.length)];
             } while (randomImage === exclude);
             return randomImage;
@@ -37,6 +52,7 @@
 
             // Update the not clicked image with a new random one
             const newContender = getRandomImage(clickedImage);
+            // If image 1 was not clicked, place new contender image as image 1
             if (notClickedImage === activeImage1) {
                 activeImage1 = newContender;
                 document.getElementById('image1').src = newContender;
@@ -46,21 +62,12 @@
             }
         }
 
-        window.onload = function() {
-            fetch('/get_images')
-            .then(response => response.json())
-            .then(data => {
-                images = data;
-                activeImage1 = getRandomImage(null);
-                activeImage2 = getRandomImage(activeImage1);
-                document.getElementById('image1').src = activeImage1;
-                document.getElementById('image2').src = activeImage2;
-            })
-            .catch(error => console.error('Error:', error));
-        };
     </script>
 </head>
 <body>
+    <div>
+        <h1 style="color: red; text-align: center;">Click your favourite frog!</h1>
+    </div>
     <div>
         <img id="image1" src="" alt="Image 1" onclick="sendSelection(activeImage1, activeImage2)">
         <img id="image2" src="" alt="Image 2" onclick="sendSelection(activeImage2, activeImage1)">
