@@ -7,34 +7,46 @@ import datetime
 app = Flask(__name__)
 r = redis.Redis(host="localhost", port=6379, db=0)
 
-# Set the initial counter values if not set already
-if not r.exists("likes"):
-    likes = {str(i): 0 for i in range(1, 154)}
-    r.hmset("likes", likes)
-
 IMAGE_FOLDER = "Countert_app/static/frogs"
 LOGGING_FOLDER = "results/"
+# By default, the app will log all incoming clicks.
+# Change this to False if you want to disable click logging
+LOG_CLICKS = True
+
+# Create a vector containing all file names in the IMAGE_FOLDER
+# These are treated as image IDs
+image_files = [f.strip(".png") for f in os.listdir(IMAGE_FOLDER) if f.endswith(".png")]
+
+# Set the initial counter values if not set already
+if not r.exists("likes"):
+    likes = {str(i): 0 for i in image_files}
+    r.hset("likes", mapping=likes)
 
 
 @app.route("/")
 def index():
-    counter = r.hgetall("likes")
-    return render_template("choose_frogs_refactor.html", counters=counter)
+    return render_template("choose_frogs_refactor.html")
 
 
-@app.route("/incr", methods=["POST"])
-def incr():
-    try:
-        # Log the incoming form data
-        app.logger.info("Form data received: %s", request.form)
-        img_id = int(request.form["image_id"])
-        r.hincrby("likes", img_id, 1)
-        count = r.hgetall("likes")
-        likes = {int(k.decode()): int(v.decode()) for k, v in count.items()}
-        return jsonify(success=True, likes=likes)
-    except Exception as e:
-        print(f"Error in incr route: {e}")
-        return jsonify(success=False, error=str(e)), 500
+@app.route("/disable_logging")
+def enable_click_test():
+    LOG_CLICKS = False
+    return jsonify({"status": "click logging disabled"})
+
+
+@app.route("/enable_logging")
+def enable_click_test():
+    LOG_CLICKS = True
+    return jsonify({"status": "click logging enabled"})
+
+
+@app.route("/reset_counters", methods=["POST"])
+def reset_counters():
+    pipeline = r.pipeline()
+    for i in image_files:
+        pipeline.hset("likes", str(i), 0)
+    pipeline.execute()
+    return jsonify({"status": "success"})
 
 
 @app.route("/get_images", methods=["GET"])
@@ -61,22 +73,26 @@ def log_selection():
     )
     timestamp = data.get("timestamp")
 
-    # Create a new CSV file if it does not exist
-    # Make a new log file every minute
-    log_file_name = f"logs_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')}.csv"
-    log_file_path = LOGGING_FOLDER + log_file_name
+    if LOG_CLICKS:
+        # First, log the result to Redis to display in the Froschteich app
+        r.hincrby("likes", clicked_image, 1)
 
-    if not os.path.exists(LOGGING_FOLDER):
-        os.makedirs(LOGGING_FOLDER)
+        # Create a new CSV file if it does not exist
+        # Make a new log file every minute
+        log_file_name = f"logs_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')}.csv"
+        log_file_path = LOGGING_FOLDER + log_file_name
 
-    if not os.path.exists(log_file_path):
-        with open(log_file_path, "w") as f:
+        if not os.path.exists(LOGGING_FOLDER):
+            os.makedirs(LOGGING_FOLDER)
+
+        if not os.path.exists(log_file_path):
+            with open(log_file_path, "w") as f:
+                writer = csv.writer(f)
+                writer.writerow(["clicked_image", "not_clicked_image", "timestamp"])
+
+        with open(log_file_path, "a") as f:
             writer = csv.writer(f)
-            writer.writerow(["clicked_image", "not_clicked_image", "timestamp"])
-
-    with open(log_file_path, "a") as f:
-        writer = csv.writer(f)
-        writer.writerow([clicked_image, not_clicked_image, timestamp])
+            writer.writerow([clicked_image, not_clicked_image, timestamp])
 
     return jsonify({"status": "success"}), 200
 
