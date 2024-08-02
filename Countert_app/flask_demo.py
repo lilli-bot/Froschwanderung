@@ -12,8 +12,9 @@ if not r.exists("likes"):
     likes = {str(i): 0 for i in range(1, 154)}
     r.hmset("likes", likes)
 
-IMAGE_FOLDER = 'Countert_app/static/frogs'
-LOGGING_FOLDER = 'results/'
+IMAGE_FOLDER = "Countert_app/static/frogs"
+LOGGING_FOLDER = "results/"
+
 
 @app.route("/")
 def index():
@@ -34,44 +35,50 @@ def incr():
     except Exception as e:
         print(f"Error in incr route: {e}")
         return jsonify(success=False, error=str(e)), 500
-    
 
-@app.route('/get_images', methods=['GET'])
+
+@app.route("/get_images", methods=["GET"])
 def get_images():
-    images = [f for f in os.listdir(IMAGE_FOLDER) if f.endswith('.png')]
-    #TODO fix this path so it is relative as well (and not hard-coded)
-    image_urls = [f'/static/frogs/{image}' for image in images]
+    images = [f for f in os.listdir(IMAGE_FOLDER) if f.endswith(".png")]
+    # TODO fix this path so it is relative as well (and not hard-coded)
+    image_urls = [f"/static/frogs/{image}" for image in images]
     return jsonify(image_urls)
 
+
 # Serve images from the IMAGE_FOLDER
-@app.route('/images/<filename>')
+@app.route("/images/<filename>")
 def serve_image(filename):
     return send_from_directory(IMAGE_FOLDER, filename)
 
-@app.route('/log_selection', methods=['POST'])
+
+@app.route("/log_selection", methods=["POST"])
 def log_selection():
     data = request.json
-    clicked_image = data.get('clicked_image')
-    not_clicked_image = data.get('not_clicked_image')
-    timestamp = data.get('timestamp')
-
-    # Log the event
-    csv_string = f"{clicked_image},{not_clicked_image},{timestamp}"
+    # Strip all folder and extension information to only retain the pure file name
+    clicked_image = data.get("clicked_image").rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    not_clicked_image = (
+        data.get("not_clicked_image").rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    )
+    timestamp = data.get("timestamp")
 
     # Create a new CSV file if it does not exist
+    # Make a new log file every minute
     log_file_name = f"logs_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')}.csv"
     log_file_path = LOGGING_FOLDER + log_file_name
-    if not os.path.exists(log_file_path):
-        with open(log_file_path, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(['clicked_image', 'not_clicked_image', 'timestamp'])
 
+    if not os.path.exists(LOGGING_FOLDER):
+        os.makedirs(LOGGING_FOLDER)
+
+    if not os.path.exists(log_file_path):
+        with open(log_file_path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(["clicked_image", "not_clicked_image", "timestamp"])
 
     with open(log_file_path, "a") as f:
-        f.write(csv_string + '\n')
-            
+        writer = csv.writer(f)
+        writer.writerow([clicked_image, not_clicked_image, timestamp])
 
-    return jsonify({'status': 'success'}), 200
+    return jsonify({"status": "success"}), 200
 
 
 if __name__ == "__main__":
