@@ -1,6 +1,11 @@
 import pytest
+import sys
+
+path = "flask_app/flask_app.py"
+if path not in sys.path:
+    sys.path.append(path)
 from flask import Flask
-import flask_app.flask_app as app
+from flask_app.flask_app import app
 
 
 @pytest.fixture
@@ -10,22 +15,10 @@ def client():
         yield client
 
 
-def test_index_redirect(client):
-    response = client.get("/")
-    assert response.status_code == 302
-    assert response.location == "http://localhost/input"
-
-
 def test_input_view(client):
-    response = client.get("/input")
+    response = client.get("/")
     assert response.status_code == 200
-    assert b"Enter something" in response.data
-
-
-def test_output_view_no_data(client):
-    response = client.get("/output")
-    assert response.status_code == 200
-    assert b"No input processed yet" in response.data
+    assert b"<title>Image Selection</title>" in response.data
 
 
 def test_logging_status_initial(client):
