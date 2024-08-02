@@ -1,4 +1,5 @@
 results/
+flask.pid
 
 #Virtual Environment
 frosch_venv/
