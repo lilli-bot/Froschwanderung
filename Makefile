@@ -15,3 +15,6 @@ enable_logging:
 
 disable_logging:
 	curl -X POST http://localhost:5001/disable_logging
+
+logging_status:
+	curl -X POST http://localhost:5001/logging_status

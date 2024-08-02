@@ -28,16 +28,25 @@ def index():
     return render_template("choose_frogs_refactor.html")
 
 
-@app.route("/disable_logging")
+@app.route("/disable_logging", methods=["POST"])
 def disable_logging():
+    global LOG_CLICKS
     LOG_CLICKS = False
     return jsonify({"status": "click logging disabled"})
 
 
-@app.route("/enable_logging")
+@app.route("/enable_logging", methods=["POST"])
 def enable_logging():
+    global LOG_CLICKS
     LOG_CLICKS = True
     return jsonify({"status": "click logging enabled"})
+
+
+@app.route("/logging_status", methods=["POST"])
+def logging_status():
+    global LOG_CLICKS
+    status = "enabled" if LOG_CLICKS else "disabled"
+    return jsonify({"status": f"logging is {status}"})
 
 
 @app.route("/reset_counters", methods=["POST"])
