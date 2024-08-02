@@ -106,5 +106,20 @@ def log_selection():
     return jsonify({"status": "success"}), 200
 
 
+@app.route("/froschteich")
+def froschteich():
+    # TODO set up config file to synchronise name of Redis table across apps
+    counters = r.hgetall("likes")
+    counters = {k.decode("utf-8"): int(v) for k, v in counters.items()}
+    return render_template("allfrogs.html", counters=counters)
+
+
+@app.route("/get_counters")
+def get_counters():
+    counters = r.hgetall("likes")
+    counters = {k.decode("utf-8"): int(v) for k, v in counters.items()}
+    return jsonify(counters=counters)
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
