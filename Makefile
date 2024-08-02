@@ -1,13 +1,11 @@
-# TODO Kill all processes on the app ports
 PID_FILE = flask.pid
 
-# Define a variable for the Redis command
 install:
 	bash install.sh
 
 setup:
 	redis-server --port 6379 &
-	FLASK_APP=Countert_app/flask_app.py flask run & echo $$! > $(PID_FILE)
+	FLASK_APP=Countert_app/flask_app.py flask run & echo $$! > $(PID_FILE) &
 
 reset_redis:
 	curl -X POST http://localhost:5001/reset_counters
