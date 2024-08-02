@@ -7,6 +7,8 @@ r = redis.Redis(host="localhost", port=6379, db=0)
 
 @app.route("/")
 def index():
+
+    # TODO set up config file to synchronise name of Redis table across apps
     counters = r.hgetall("likes")
     counters = {k.decode("utf-8"): int(v) for k, v in counters.items()}
     return render_template("allfrogs.html", counters=counters)

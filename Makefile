@@ -18,3 +18,5 @@ disable_logging:
 
 logging_status:
 	curl -X POST http://localhost:5001/logging_status
+
+# TODO Kill all processes on the app ports
