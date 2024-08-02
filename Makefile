@@ -5,7 +5,7 @@ install:
 
 setup:
 	redis-server --port 6379 &
-	FLASK_APP=flask_app/flask_app.py flask run & echo $$! > $(PID_FILE) &
+	FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
 
 reset_redis:
 	curl -X POST http://localhost:5001/reset_counters
