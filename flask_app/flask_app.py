@@ -7,7 +7,7 @@ import datetime
 app = Flask(__name__)
 r = redis.Redis(host="localhost", port=6379, db=0)
 
-IMAGE_FOLDER = "Countert_app/static/frogs"
+IMAGE_FOLDER = "flask_app/static/frogs"
 LOGGING_FOLDER = "results/"
 # By default, the app will log all incoming clicks.
 # Change this to False if you want to disable click logging
