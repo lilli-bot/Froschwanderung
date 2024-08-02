@@ -29,13 +29,13 @@ def index():
 
 
 @app.route("/disable_logging")
-def enable_click_test():
+def disable_logging():
     LOG_CLICKS = False
     return jsonify({"status": "click logging disabled"})
 
 
 @app.route("/enable_logging")
-def enable_click_test():
+def enable_logging():
     LOG_CLICKS = True
     return jsonify({"status": "click logging enabled"})
 
