@@ -3,6 +3,7 @@ import redis
 import os
 import csv
 import datetime
+import pytz
 
 LOG_CLICKS = True
 
@@ -81,7 +82,9 @@ def create_app(redis_client=None):
         not_clicked_image = (
             data.get("not_clicked_image").rsplit("/", 1)[-1].rsplit(".", 1)[0]
         )
-        timestamp = data.get("timestamp")
+        timestamp = datetime.datetime.fromisoformat(data.get("timestamp")).astimezone(
+            pytz.timezone("Europe/Berlin")
+        )
 
         if LOG_CLICKS:
             # First, log the result to Redis to display in the Froschteich app
