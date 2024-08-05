@@ -27,3 +27,7 @@ stop:
 	else \
 		echo "PID file not found. Is the app running?"; \
 	fi
+
+restart:
+	make stop
+	make setup
