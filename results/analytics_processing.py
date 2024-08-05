@@ -21,21 +21,25 @@ timestamp = datetime.now().strftime("%Y%m")
 # Check if any parquet files exist, if not, we will initialise one using
 # the current timestamp
 parquet_files = [f for f in os.listdir(input_folder) if f.endswith(".parquet")]
-if not parquet_files:
-    output_file = f"{timestamp}.parquet"
-else:
-    for parquet_file in parquet_files:
-        # Check if the Parquet file is smaller than 1GB
-        # If it is, use it as the output Parquet file
-        # If it is not, keep looking for a smaller file
-        if os.path.getsize(os.path.join(input_folder, parquet_file)) < (
-            1 * 1024 * 1024 * 1024
-        ):
-            output_file = parquet_file
-            break
-logger.info(f"Output Parquet file: {output_file}")
 
-# Let's fix the .CSV schema
+output_file = f"{timestamp}.parquet"
+file_found = False
+
+# Determine the output file
+for parquet_file in parquet_files:
+    file_path = os.path.join(input_folder, parquet_file)
+    if os.path.getsize(file_path) < (1 * 1024 * 1024 * 1024):
+        output_file = parquet_file
+        file_found = True
+        break
+
+# Log the result
+if file_found:
+    logger.info(f"Selected existing Parquet file: {output_file}")
+else:
+    logger.info(f"No suitable Parquet file found. Using new file: {output_file}")
+
+# Let's determine the .CSV schema
 csv_schema = {"clicked_image": "string", "not_clicked_image": "string"}
 
 
