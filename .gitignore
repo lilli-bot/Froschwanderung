@@ -172,3 +172,5 @@ cython_debug/
 .vscode/settings.json
 dump.rdb
 dump.rdb
+dev.duckdb
+dump.rdb
