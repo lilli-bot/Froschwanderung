@@ -47,7 +47,7 @@ csv_schema = {
 }
 
 
-def process_csv_to_parquet(input_folder, output_file):
+def process_csv_to_parquet(input_folder, output_file=output_file):
     # Define paths
     processed_folder = os.path.join(input_folder, "processed")
 
@@ -61,10 +61,10 @@ def process_csv_to_parquet(input_folder, output_file):
     if not csv_files:
         logger.info("No CSV files to process.")
         return
-
+    output_path = os.path.join(input_folder, output_file)
     # Initialize an empty DataFrame or read existing Parquet file if any exist
-    if os.path.exists(output_file):
-        combined_df = pd.read_parquet(output_file)
+    if os.path.exists(output_path):
+        combined_df = pd.read_parquet(output_path)
     else:
         combined_df = pd.DataFrame()
 
