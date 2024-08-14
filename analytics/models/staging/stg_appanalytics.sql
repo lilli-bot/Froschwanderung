@@ -8,13 +8,14 @@
 WITH parquet_data AS (
     SELECT *
     FROM read_parquet('./results/*.parquet', filename=true)
+    ORDER BY timestamp
 ),
 lagged_timestamps AS (
     SELECT 
         event_id,
         clicked_image,
         not_clicked_image,
-        timestamp,
+        timestamp AT TIME ZONE 'Europe/Berlin' AS timestamp,
         filename,
         -- indicate when a subsequent row indicates a session or user change
         {{extract_session_from_timestamp(timestamp_column = 'timestamp')}} AS session_change,
@@ -37,3 +38,4 @@ SELECT
     -- ever time the winner changes not, the current streak of the winner increments
     SUM(CASE WHEN winner_change = FALSE THEN 1 ELSE 0 END) OVER (PARTITION BY clicked_image ORDER BY timestamp) + 1 AS current_winner_streak,
 FROM lagged_timestamps
+ORDER BY timestamp

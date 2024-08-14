@@ -6,6 +6,9 @@ froschwanderung_analytics:
       threads: 1
       extensions:
         - parquet
+        - ICU
+      settings:
+        TimeZone: Europe/Berlin
 
     prod:
       type: duckdb
@@ -13,5 +16,8 @@ froschwanderung_analytics:
       threads: 4
       extensions:
         - parquet
+        - ICU
+      settings:
+        TimeZone: Europe/Berlin
 
   target: dev
