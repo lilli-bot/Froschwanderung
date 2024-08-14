@@ -4,10 +4,14 @@ froschwanderung_analytics:
       type: duckdb
       path: dev.duckdb
       threads: 1
+      extensions:
+        - parquet
 
     prod:
       type: duckdb
       path: prod.duckdb
       threads: 4
+      extensions:
+        - parquet
 
   target: dev
