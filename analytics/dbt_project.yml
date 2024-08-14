@@ -35,3 +35,12 @@ models:
 vars:
   new_user_after_minutes: 30
   new_session_after_hours: 1
+
+seeds:
+  analytics:
+    sessions:
+      +column_types:
+        session_start: timestamp_s
+        session_end: timestamp_s
+        session_location: varchar
+        session_description: varchar

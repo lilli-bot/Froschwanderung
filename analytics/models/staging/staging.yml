@@ -1,4 +1,19 @@
 version: 2
 
 models:
-  - name: stg_app_analytics
+  - name: stg_events
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+      - name: timestamp
+        tests:
+          - unique
+          - not_null
+      - name: clicked_image
+        tests:
+          - not_null
+      - name: not_clicked_image
+        tests:
+          - not_null
