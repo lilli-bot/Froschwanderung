@@ -81,6 +81,10 @@ def process_csv_to_parquet(input_folder, output_file):
             print(f"File {csv_file} is malformed. Skipping.")
             continue
 
+        # Ensure the timestamp column is properly converted to datetime
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+
         # Append the DataFrame to the combined DataFrame
         combined_df = pd.concat([combined_df, df], ignore_index=True)
 
