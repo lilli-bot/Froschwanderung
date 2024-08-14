@@ -31,3 +31,7 @@ models:
   staging:
     +materialized: view
     +schema: staging
+
+vars:
+  new_user_after_minutes: 30
+  new_session_after_hours: 1
