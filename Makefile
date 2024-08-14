@@ -1,15 +1,17 @@
 PID_FILE = flask.pid
+.PHONY: install setup analytics reset_redis enable_logging disable_logging logging_status stop restart
 
 install:
 	bash install.sh
-	bash dbt_install.sh
+	bash dbt_setup.sh
 
 setup:
 	redis-server --port 6379 &
 	FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
 
 analytics:
-	dbt run
+	python3 results/analytics_processing.py
+	bash run_dbt.sh
 
 reset_redis:
 	curl -X POST http://localhost:5001/reset_counters
