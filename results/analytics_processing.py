@@ -40,7 +40,11 @@ else:
     logger.info(f"No suitable Parquet file found. Using new file: {output_file}")
 
 # Let's determine the .CSV schema
-csv_schema = {"clicked_image": "string", "not_clicked_image": "string"}
+csv_schema = {
+    "event_id": "string",
+    "clicked_image": "string",
+    "not_clicked_image": "string",
+}
 
 
 def process_csv_to_parquet(input_folder, output_file):
