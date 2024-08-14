@@ -31,8 +31,9 @@ SELECT
     not_clicked_image,
     timestamp,
     filename,
-    -- every time a user or session1 changes, increment the ID counter by ID, starting from 1
+    -- every time a user or session changes, increment the ID counter by ID, starting from 1
     SUM(CASE WHEN user_change = TRUE THEN 1 ELSE 0 END) OVER (ORDER BY timestamp) + 1 AS user_id,
     SUM(CASE WHEN session_change = TRUE THEN 1 ELSE 0 END) OVER (ORDER BY timestamp) + 1 AS session_id,
+    -- ever time the winner changes not, the current streak of the winner increments
     SUM(CASE WHEN winner_change = FALSE THEN 1 ELSE 0 END) OVER (PARTITION BY clicked_image ORDER BY timestamp) + 1 AS current_winner_streak,
 FROM lagged_timestamps
