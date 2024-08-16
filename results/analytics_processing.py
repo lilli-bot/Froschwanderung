@@ -61,6 +61,7 @@ def process_csv_to_parquet(input_folder, output_file=output_file):
     if not csv_files:
         logger.info("No CSV files to process.")
         return
+
     output_path = os.path.join(input_folder, output_file)
     # Initialize an empty DataFrame or read existing Parquet file if any exist
     if os.path.exists(output_path):
@@ -87,6 +88,9 @@ def process_csv_to_parquet(input_folder, output_file=output_file):
 
         # Append the DataFrame to the combined DataFrame
         combined_df = pd.concat([combined_df, df], ignore_index=True)
+
+    # deduplicate eventual event_ids
+    combined_df.drop_duplicates(subset=["event_id"], inplace=True)
 
     # Convert the combined DataFrame to a Parquet file
     table = pa.Table.from_pandas(combined_df)
