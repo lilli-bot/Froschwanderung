@@ -16,9 +16,23 @@ analytics:
 	python3 results/analytics_processing.py
 	bash run_dbt.sh
 
-# Start the Metabase container for data visualisation
-metabase:
-	docker compose up -d -f ./analytics/duckdb/docker-compose.yml
+# Start Metabase for data visualisation
+start_metabase:
+# Check if the image exists, if not, build it
+	@if [ $$(docker image ls | grep -c metaduck) -gt 0 ]; then \
+	echo "Image exists, skipping build"; \
+    else \
+        cd analytics/metabase && docker build -t metaduck .; \
+    fi
+# Check if the container exists, if not, start it
+	@if [ $$(docker container ls -a | grep -c metaduck) -gt 0 ]; then \
+	echo "Metabase container is already running"; \
+	else cd analytics/metabase && docker compose up -d; \
+	fi
+
+# Stop the Metabase container
+stop_metabase:
+	cd analytics/metabase && docker compose down
 
 # Reset the Redis cache used for the Froschteich live display
 reset_redis:

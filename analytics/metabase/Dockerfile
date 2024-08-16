@@ -1,3 +1,6 @@
+# This file builds the "Metaduck" image that combines 
+# the Metabase base image with the Metabase plugin for DuckDB
+
 FROM openjdk:19-buster
 
 ENV MB_PLUGINS_DIR=/home/plugins/
