@@ -1,3 +1,14 @@
+{# We need to materialise this into a table because later when this query will be read
+    from a DuckDB inside a container, the path of the Parquets will not be correct.
+    In other words: The parquets will not even be IN the container.
+    To change this, you either need to run Metabase on your local machine directly OR provide
+    the Parquet files in the Container volume. #}
+{{
+  config(
+    materialized = 'table',
+    )
+}}
+
 WITH parquet_data AS (
     SELECT *
     FROM read_parquet('./results/*.parquet', filename=true)
@@ -32,4 +43,6 @@ SELECT
     SUM(CASE WHEN winner_change = FALSE THEN 1 ELSE 0 END) 
         OVER (PARTITION BY clicked_image ORDER BY timestamp) + 1 AS current_winner_streak,
 FROM lagged_timestamps
+-- TODO Impute missing timestamps
+WHERE timestamp IS NOT NULL
 ORDER BY timestamp
