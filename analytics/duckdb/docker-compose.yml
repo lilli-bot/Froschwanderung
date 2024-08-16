@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  metaduck:
+    image: metaduck
+    container_name: metaduck
+    ports:
+      - "81:3000"
+    mem_limit: 2GB
+    environment:
+      - MB_PLUGINS_DIR=/home/plugins
+    volumes:
+      - ./:/container/directory
+
+networks:
+  default:
+    name: metadb

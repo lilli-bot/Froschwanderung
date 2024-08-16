@@ -2,7 +2,7 @@ froschwanderung_analytics:
   outputs:
     dev:
       type: duckdb
-      path: dev.duckdb
+      path: analytics/duckdb/dev.duckdb
       threads: 1
       extensions:
         - parquet
@@ -12,7 +12,7 @@ froschwanderung_analytics:
 
     prod:
       type: duckdb
-      path: prod.duckdb
+      path: analytics/duck_db/prod.duckdb
       threads: 4
       extensions:
         - parquet
