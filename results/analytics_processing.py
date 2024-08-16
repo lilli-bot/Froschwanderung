@@ -90,7 +90,17 @@ def process_csv_to_parquet(input_folder, output_file=output_file):
         combined_df = pd.concat([combined_df, df], ignore_index=True)
 
     # deduplicate eventual event_ids
-    combined_df.drop_duplicates(subset=["event_id"], inplace=True)
+    if combined_df["event_id"].duplicated().any():
+        combined_df.drop_duplicates(subset=["event_id"], inplace=True)
+        logger.warning("Duplicated 'event_id' values found. Removed duplicates.")
+
+    if combined_df["event_id"].isnull().any():
+        logger.warning("NULL values found in 'event_id' column.")
+    if combined_df["timestamp"].isnull().any():
+        logger.warning(
+            f"NULL values found in 'timestamp' column for event_ids \
+                        { combined_df[combined_df['event_id'].isnull()]['event_id'].to_list() }."
+        )
 
     # Convert the combined DataFrame to a Parquet file
     table = pa.Table.from_pandas(combined_df)
