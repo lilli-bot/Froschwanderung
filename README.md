@@ -10,9 +10,37 @@ Interactive [Frog] Ranking Game
 
 ## The Backend
 
-## Flask
+### Flask
 
-## Analytics ETL
+We are using the Flask framework to process the data created through the app. These are the main functionalities of the backend:
+
+1. Controlling the app through API calls during a session to e.g. start the app, prevent event logging for testing purposes,
+   stop the app, and start the post-processing of all session data.
+2. Caching clicks per image in Redis to display on the fly in the Froschteich view.
+3. Saving detailed information about each event in a permanent database for later analysis.
+
+#### Endpoints
+
+To serve the above purposes, the app has the following endpoints:
+
+- `enable_logging` / `disable_logging` / `logging_stauts`:
+  POSTing to these endpoints controls whether clicking on an image leads to an event being created for processing or not.
+  In the beginning of an exhibition, it might be beneficial to test the frontend first and only enable logging after
+  the session has started and guests are using the app.
+- `log_selection`: This is the endpoint that gets called automatically when an image is clicked.
+  If logging is enabled, it will perform two tasks.
+  1. It will increment the click counter of the winning image in the Redis cache
+  2. It will log the winning image, the losing image, and the timestamp of a click event to a CSV file.
+- `get_counters` and `reset_counters`: These endpoints control the Redis cache.
+  The first endpoint returns a JSON with the current click values for each image as a dictionary.
+  The second endpoint resets the Redis cache to start with a clean slate on the Froschteich at the beginning of an exhibition.
+  The cache is not automatically cleared when exiting the app to allow resuming a session in case of technical difficulties mid-exhibition.
+- `get_images` and `serve_images`: Being mere utility functions, these endpoints only serve as a file serving mechanism with which the frontend can request images from the folders of the file system dynamically.
+  The first endpoint lists all available images so the randomised frontend functions only choose from actually available images, and the second endpoint returns the actual image from the `IMAGE_FOLDER`,
+- `froschteich`: Is called from within a browser to display the view of all frogs weighted by their current click counter.
+- `index` : The main route of the app: Displays the user-input view where users can choose their favourite images.
+
+### Analytics ETL
 
 - Python script to:
   1. Process all CSV log files
@@ -55,8 +83,8 @@ other image. What this logic obfuscates, however, is that some users simply
 really like a particular image OR that no good contenders happened to be
 selected in a particular user session.
 
-To mitiage this, we are introducing a
-**penality factor** for subsequent wins. That means, the more often in a row an
+To mitigate this, we are introducing a
+**penalty factor** for subsequent wins. That means, the more often in a row an
 image has won, the less information we obtain about its general success and the
 more information about the particular user's preference. Thus, to account for the
 diminishing general validity of a win streak of a particular image, we are
