@@ -6,6 +6,42 @@ Interactive [Frog] Ranking Game
 
 ## How to Use?
 
+### Installation
+
+### Controlling an exhibition
+
+There are multiple MAKEFILE commands available to set up and close an exhibition.
+
+- `make setup`: Sets up the Redis server on the designated port, runs the Flask app and records its process ID (`PID`) into a file.
+
+  - You can now go into your browser and open the user-input interface at `localhost:5001` and the Froschteich at `localhost:5001/Froschteich`.
+    N.B. that these are the standard ports and if you cannot find anything there, the `flask_app.py` script might have changes to the port of the Flask app.
+
+  > N.B. You might need to open up a second terminal to execute further commands once the app
+  > is running in case the app does not give you the terminal back.
+
+- `make reset_redis`: resets the Redis cache to make all images have 0 clicks again in case the case was still populated from an earlier exhibition.
+- `make enable_logging` / `make disable_logging` / `make logging_stauts`: Currently, logging is enabled on startup.
+  If you want to test that the user-input frontend works without logging these test clicks,
+  you can call the `make disable_logging` command.
+  If you are unsure about the current status or want to double-check it, call the `make logging_stauts` command.
+- `make stop`: Stop the app by killing its process stored in the `PID_FILE`, thereby deleting the file, if it exists.
+- `make restart`: A convenience wrapper around `make stop` and `make setup`: Restart the app.
+
+### Analysing the results
+
+After you have collected the user input during an exhibition, your results are stored in CSV files on your file system. To compress them into a Parquet file and transform them into analysable data, you can run the `make analytics` command which will spin up dbt to transform your data and store them in a DuckDB file in the `./analytics/duckdb/` folder.
+
+To query and visualise the data in the DuckDB, this app can spin up the software Metabase in a Docker container.
+To start it, execute the `make start_metabase` command, which will build the image if it does not exist,
+and spin up the container if it is not already running.
+
+You can now access Metabase in your browser on `localhost:81` (standard port, defined by the `docker-compose.yml`).
+The first time, you need to indicate an e-mail address and a password. Both are just used internally, and the e-mail can be fake for example. You might need to remember them later to log in again though.
+We cannot cover how to use Metabase here, but we chose the software because it should be quite straightforward to use.
+
+Once you are done, you can stop the Metabase container if you want, using `make stop_metabase`.
+
 ## The Frontend
 
 ## The Backend
