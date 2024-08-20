@@ -6,11 +6,24 @@ Interactive [Frog] Ranking Game
 
 ## How to Use?
 
-### Prerequisites
+The rough steps of using this app are the following:
 
-This repository assumes you have Python > 3.9, homebrew and Docker, as well as Docker Compose installed on your machine.
+1. Load in your images
+2. Install all dependencies for the app
+3. Spin up the app and let your users input their preferences
+4. Stop the app and process the created data into a database.
+5. Query the database to gain insights about how your images fared.
+
+### Loading in your images
+
+First, you need images to display. Load your images as .png files into the `./flask_app/static/frogs/` folder. It is called `frogs/` for legacy reasons.
+TODO: Rename the folder to something more general?
+The file names (without extension) will become the titles of the images (i.e. their only identifier).
+So choose them wisely.
 
 ### Installation
+
+This repository assumes you have Python > 3.9, homebrew and Docker, as well as Docker Compose installed on your machine.
 
 The `make install` command needs to be executed once after you have cloned this repository to your local machine.
 It creates a python virtual environment called `venv` in the `venv/` folder in your working directory and activates it.
@@ -23,7 +36,6 @@ It then checks if you have Redis installed on your machine and if not installs i
 There are multiple MAKEFILE commands available to set up and close an exhibition.
 
 - `make setup`: Sets up the Redis server on the designated port, runs the Flask app and records its process ID (`PID`) into a file.
-
   - You can now go into your browser and open the user-input interface at `localhost:5001` and the Froschteich at `localhost:5001/Froschteich`.
     N.B. that these are the standard ports and if you cannot find anything there, the `flask_app.py` script might have changes to the port of the Flask app.
 
@@ -79,10 +91,15 @@ To serve the above purposes, the app has the following endpoints:
   2. It will log the winning image, the losing image, and the timestamp of a click event to a CSV file.
 - `get_counters` and `reset_counters`: These endpoints control the Redis cache.
   The first endpoint returns a JSON with the current click values for each image as a dictionary.
+  It is used by the Froschteich frontend to update the size of the images based on the click values.
+
   The second endpoint resets the Redis cache to start with a clean slate on the Froschteich at the beginning of an exhibition.
   The cache is not automatically cleared when exiting the app to allow resuming a session in case of technical difficulties mid-exhibition.
+
 - `get_images` and `serve_images`: Being mere utility functions, these endpoints only serve as a file serving mechanism with which the frontend can request images from the folders of the file system dynamically.
+
   The first endpoint lists all available images so the randomised frontend functions only choose from actually available images, and the second endpoint returns the actual image from the `IMAGE_FOLDER`,
+
 - `froschteich`: Is called from within a browser to display the view of all frogs weighted by their current click counter.
 - `index` : The main route of the app: Displays the user-input view where users can choose their favourite images.
 
