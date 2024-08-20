@@ -6,7 +6,17 @@ Interactive [Frog] Ranking Game
 
 ## How to Use?
 
+### Prerequisites
+
+This repository assumes you have Python > 3.9, homebrew and Docker, as well as Docker Compose installed on your machine.
+
 ### Installation
+
+The `make install` command needs to be executed once after you have cloned this repository to your local machine.
+It creates a python virtual environment called `venv` in the `venv/` folder in your working directory and activates it.
+Since almost all our dependencies are Python packages, it will then install them from the `requirements.txt` file to this venv.
+
+It then checks if you have Redis installed on your machine and if not installs it using homebrew.
 
 ### Controlling an exhibition
 
