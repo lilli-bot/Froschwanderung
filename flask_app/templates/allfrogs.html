@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Frogs</title>
+    <style>
+        body {
+            font-family: Verdana, sans-serif;
+            background-color: rgb(78, 31, 248);
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Adjusted height */
+            width: 100vw; /* Adjusted width */
+            box-sizing: border-box;
+            position: relative; /* Added to establish positioning context for counters */
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            max-width: 100%; /* Limit the gallery width */
+            max-height: 100%; /* Limit the gallery height */
+            justify-content: center; /* Center horizontally */
+            align-content: center; /* Center vertically */
+            position: relative; /* Ensure proper positioning of images */
+        }
+
+        .gallery-item {
+            transition: transform 0.3s ease, width 0.3s ease;
+            overflow: visible; /* Allow content overflow */
+        }
+
+        .gallery-item.absolute {
+            position: absolute; /* Position images absolutely only when needed */
+            z-index: 10; /* Higher z-index to ensure it appears on top */
+        }
+
+        .gallery img {
+            width: 100px;
+            height: auto;
+            transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            opacity: 0; /* Default opacity for initial grid */
+        }
+
+        .gallery-item.absolute img {
+            opacity: 1; /* Full opacity for absolutely positioned images */
+        }
+
+        .glow {
+            box-shadow: 0 0 25px white;
+        }
+
+        .counter {
+            position: absolute;
+            bottom: 3px; /* Position 3px from the bottom */
+            right: 3px; /* Position 3px from the right */
+            color: white;
+            font-size: 12px;
+            background-color: rgba(0, 0, 0, 0.5); /* Optional: background for better visibility */
+            padding: 2px 5px; /* Optional: padding for better readability */
+            border-radius: 3px; /* Optional: rounded corners */
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="container">
+            <div class="gallery" id="gallery">
+                {% for id in range(1, 154) %}
+                    <div class="gallery-item" id="gallery-item-{{ id }}">
+                        <!-- TODO turn hardcoded path into a variable -->
+                        <img id="img{{ id }}" data-id="{{ id }}" src="{{ url_for('static', filename='frogs/' ~ id ~ '.png') }}">
+                        <div class="counter" id="counter{{ id }}">0</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script>
+        let previousCounters = {};
+        let positions = [];
+
+        function isOverlapping(newPos, size) {
+            for (const pos of positions) {
+                if (
+                    newPos.x < pos.x + size.width &&
+                    newPos.x + size.width > pos.x &&
+                    newPos.y < pos.y + size.height &&
+                    newPos.y + size.height > pos.y
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function findNonOverlappingPosition(size) {
+            const margin = 10; // Adjust margin as needed
+            let tries = 100;
+            while (tries > 0) {
+                const newX = Math.random() * (window.innerWidth - size.width - margin * 2) + margin;
+                const newY = Math.random() * (window.innerHeight - size.height - margin * 2) + margin;
+
+                if (
+                    newX >= 0 &&
+                    newY >= 0 &&
+                    newX + size.width <= window.innerWidth &&
+                    newY + size.height <= window.innerHeight &&
+                    !isOverlapping({ x: newX, y: newY }, size)
+                ) {
+                    const newPos = { x: newX, y: newY };
+                    positions.push({
+                        x: newX,
+                        y: newY,
+                        width: size.width,
+                        height: size.height
+                    });
+                    return newPos;
+                }
+                tries--;
+            }
+            return null;
+        }
+
+        function applyGlowEffect(img) {
+            img.classList.add('glow');
+            setTimeout(() => {
+                img.classList.remove('glow');
+            }, 2000); // Remove the glow after 2 seconds
+        }
+
+        function updateImageSizes(counters) {
+            for (const [id, count] of Object.entries(counters)) {
+                const prevCount = previousCounters[id] || 0;
+                if (count > prevCount) {
+                    const img = document.getElementById(`img${id}`);
+                    // Make sure IDs do exist and lign up with the IDs stored in Redis
+                    const counter = document.getElementById(`counter${id}`);
+                    const galleryItem = document.getElementById(`gallery-item-${id}`);
+                    if (img && galleryItem && counter) {
+                        const scaleFactor = 1 + count * 0.07;
+                        img.style.transform = `scale(${scaleFactor})`;
+
+                        counter.textContent = count; // Update counter display
+
+                        // Add absolute positioning to the gallery item
+                        galleryItem.classList.add('absolute');
+
+                        // Calculate size
+                        const rect = galleryItem.getBoundingClientRect();
+                        const size = {
+                            width: rect.width * scaleFactor,
+                            height: rect.height * scaleFactor
+                        };
+
+                        // Apply green glow effect
+                        applyGlowEffect(img);
+                    }
+                }
+            }
+            previousCounters = { ...counters };
+        }
+
+        function repositionImages() {
+            // Clear the positions array before repositioning
+            positions = [];
+
+            const galleryItems = document.querySelectorAll('.gallery-item.absolute');
+            galleryItems.forEach(item => {
+                const rect = item.getBoundingClientRect();
+                const size = {
+                    width: rect.width,
+                    height: rect.height
+                };
+                const newPosition = findNonOverlappingPosition(size);
+                if (newPosition) {
+                    item.style.left = `${newPosition.x}px`;
+                    item.style.top = `${newPosition.y}px`;
+                }
+            });
+        }
+
+
+        async function fetchCounters() {
+            try {
+                const response = await fetch('/get_counters');
+                const data = await response.json();
+                updateImageSizes(data.counters);
+            } catch (error) {
+                console.error('Error fetching counters:', error);
+            }
+        }
+
+        // Periodically fetch counters and update image sizes
+        setInterval(fetchCounters, 1000); // Fetch every second
+
+        // Randomly reposition images every 3 seconds
+        setInterval(repositionImages, 3000); // Reposition every 3 seconds
+
+        // Initial fetch
+        fetchCounters();
+
+    </script>
+</body>
+</html>
+
+
+
+<!--<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Frogs</title>
+    <style>
+        /* CSS for general styling */
+        body {
+            font-family: Verdana, sans-serif;
+            background-color: powderblue;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Adjusted height */
+            width: 100vw; /* Adjusted width */
+            box-sizing: border-box;
+            /*border: 2px solid red;*/
+            position: relative; /* Added to establish positioning context for counters */
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            max-width: 100%; /* Limit the gallery width */
+            max-height: 100%; /* Limit the gallery height */
+            justify-content: center; /* Center horizontally */
+            align-content: center; /* Center vertically */
+            position: relative; /* Ensure proper positioning of images */
+        }
+
+        .gallery-item {
+            transition: transform 0.3s ease, width 0.3s ease;
+            overflow: visible; /* Allow content overflow */
+        }
+
+        .gallery-item.absolute {
+            position: absolute; /* Position images absolutely only when needed */
+            z-index: 10; /* Higher z-index to ensure it appears on top */
+        }
+
+        .gallery img {
+            width: 70px;
+            height: auto;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            cursor: pointer;
+            opacity: 0; /* Default opacity for initial grid */
+        }
+
+        .gallery-item.absolute img {
+            opacity: 1; /* Full opacity for absolutely positioned images */
+        }
+
+        .counter {
+            position: absolute;
+            bottom: 3px; /* Position 3px from the bottom */
+            right: 3px; /* Position 3px from the right */
+            color: white;
+            font-size: 12px;
+            background-color: rgba(0, 0, 0, 0.5); /* Optional: background for better visibility */
+            padding: 2px 5px; /* Optional: padding for better readability */
+            border-radius: 3px; /* Optional: rounded corners */
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="container">
+            <div class="gallery" id="gallery">
+                {% for id in range(1, 154) %}
+                    <div class="gallery-item" id="gallery-item-{{ id }}">
+                        <img id="img{{ id }}" data-id="{{ id }}" src="{{ url_for('static', filename='frogs/' ~ id ~ '.png') }}">
+                        <div class="counter" id="counter{{ id }}">0</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <footer></footer>
+
+    <script>
+        let previousCounters = {};
+        let positions = [];
+
+        function isOverlapping(newPos, size) {
+            for (const pos of positions) {
+                if (
+                    newPos.x < pos.x + size.width &&
+                    newPos.x + size.width > pos.x &&
+                    newPos.y < pos.y + size.height &&
+                    newPos.y + size.height > pos.y
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function findNonOverlappingPosition(size) {
+            const margin = 10; // Adjust margin as needed
+            let tries = 100;
+            while (tries > 0) {
+                const newX = Math.random() * (window.innerWidth - size.width - margin * 2) + margin;
+                const newY = Math.random() * (window.innerHeight - size.height - margin * 2) + margin;
+
+                if (
+                    newX >= 0 &&
+                    newY >= 0 &&
+                    newX + size.width <= window.innerWidth &&
+                    newY + size.height <= window.innerHeight &&
+                    !isOverlapping({ x: newX, y: newY }, size)
+                ) {
+                    const newPos = { x: newX, y: newY };
+                    positions.push({
+                        x: newX,
+                        y: newY,
+                        width: size.width,
+                        height: size.height
+                    });
+                    return newPos;
+                }
+                tries--;
+            }
+            return null;
+        }
+
+        function updateImageSizes(counters) {
+            for (const [id, count] of Object.entries(counters)) {
+                const prevCount = previousCounters[id] || 0;
+                if (count > prevCount) {
+                    const img = document.getElementById(`img${id}`);
+                    const counter = document.getElementById(`counter${id}`);
+                    const galleryItem = document.getElementById(`gallery-item-${id}`);
+                    if (img && galleryItem && counter) {
+                        const scaleFactor = 1 + count * 0.07;
+                        img.style.transform = `scale(${scaleFactor})`;
+
+                        counter.textContent = count; // Update counter display
+
+                        // Add absolute positioning to the gallery item
+                        galleryItem.classList.add('absolute');
+
+                        // Calculate size
+                        const rect = galleryItem.getBoundingClientRect();
+                        const size = {
+                            width: rect.width * scaleFactor,
+                            height: rect.height * scaleFactor
+                        };
+
+                        // Find a non-overlapping position
+                        const newPosition = findNonOverlappingPosition(size);
+
+                        if (newPosition) {
+                            galleryItem.style.left = `${newPosition.x}px`;
+                            galleryItem.style.top = `${newPosition.y}px`;
+                        }
+                    }
+                }
+            }
+            previousCounters = { ...counters };
+        }
+
+        async function fetchCounters() {
+            try {
+                const response = await fetch('/get_counters');
+                const data = await response.json();
+                updateImageSizes(data.counters);
+            } catch (error) {
+                console.error('Error fetching counters:', error);
+            }
+        }
+
+        // Periodically fetch counters and update image sizes
+        setInterval(fetchCounters, 1000); // Fetch every second
+
+        // Initial fetch
+        fetchCounters();
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!---
+
+<!doctype html>
+<html lang="de">
+    <head>
+        <title>all frogs</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            /* CSS for general styling */
+            body {
+                font-family: Verdana, sans-serif;
+                background-color: aliceblue;
+            }
+            
+            .gallery {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(5%, 1fr));
+                /*grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));*/
+                gap: 10px;
+                padding: 20px;
+                width: 90%;
+            }
+            
+            .gallery img {
+                width: 100%;
+                height: auto;
+                transition: all 0.3s ease;
+                cursor: pointer;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 99vh;
+                gap: 2%;
+            }
+
+            .childUP,
+            .childDOWN {
+                margin: 10px; /* You can adjust margin as needed */
+                width: 5%;
+                flex: 0 1 auto;
+            }
+
+        </style>
+    </head>
+    
+    <body>
+        <!--_____________________________________________________________________________________________________________________ Bilder --
+        <main>
+            <div class="container">
+                <div class="gallery">
+                    <img id="img1" data-id="1" src="{{ url_for('static', filename='frogs/1.png') }}" onclick="handleImageClick(this)">
+                    <img id="img2" data-id="2" src="{{ url_for('static', filename='frogs/2.png') }}" onclick="handleImageClick(this)">
+                    <img id="img3" data-id="3" src="{{ url_for('static', filename='frogs/3.png') }}" onclick="handleImageClick(this)">
+                    <img id="img4" data-id="4" src="{{ url_for('static', filename='frogs/4.png') }}" onclick="handleImageClick(this)">
+                    <img id="img5" data-id="5" src="{{ url_for('static', filename='frogs/5.png') }}" onclick="handleImageClick(this)">
+                    <img id="img6" data-id="6" src="{{ url_for('static', filename='frogs/6.png') }}" onclick="handleImageClick(this)">
+                    <img id="img7" data-id="7" src="{{ url_for('static', filename='frogs/7.png') }}" onclick="handleImageClick(this)">
+                    <img id="img8" data-id="8" src="{{ url_for('static', filename='frogs/8.png') }}" onclick="handleImageClick(this)">
+                    <img id="img9" data-id="9" src="{{ url_for('static', filename='frogs/9.png') }}" onclick="handleImageClick(this)">
+                    <img id="img10" data-id="10" src="{{ url_for('static', filename='frogs/10.png') }}" onclick="handleImageClick(this)">
+                    <img id="img11" data-id="11" src="{{ url_for('static', filename='frogs/11.png') }}" onclick="handleImageClick(this)">
+                    <img id="img12" data-id="12" src="{{ url_for('static', filename='frogs/12.png') }}" onclick="handleImageClick(this)">
+                    <img id="img13" data-id="13" src="{{ url_for('static', filename='frogs/13.png') }}" onclick="handleImageClick(this)">
+                    <img id="img14" data-id="14" src="{{ url_for('static', filename='frogs/14.png') }}" onclick="handleImageClick(this)">
+                    <img id="img15" data-id="15" src="{{ url_for('static', filename='frogs/15.png') }}" onclick="handleImageClick(this)">
+                    <img id="img16" data-id="16" src="{{ url_for('static', filename='frogs/16.png') }}" onclick="handleImageClick(this)">
+                    <img id="img17" data-id="17" src="{{ url_for('static', filename='frogs/17.png') }}" onclick="handleImageClick(this)">
+                    <img id="img18" data-id="18" src="{{ url_for('static', filename='frogs/18.png') }}" onclick="handleImageClick(this)">
+                    <img id="img19" data-id="19" src="{{ url_for('static', filename='frogs/19.png') }}" onclick="handleImageClick(this)">
+                    <img id="img20" data-id="20" src="{{ url_for('static', filename='frogs/20.png') }}" onclick="handleImageClick(this)">
+                    <img id="img21" data-id="21" src="{{ url_for('static', filename='frogs/21.png') }}" onclick="handleImageClick(this)">
+                    <img id="img22" data-id="22" src="{{ url_for('static', filename='frogs/22.png') }}" onclick="handleImageClick(this)">
+                    <img id="img23" data-id="23" src="{{ url_for('static', filename='frogs/23.png') }}" onclick="handleImageClick(this)">
+                    <img id="img24" data-id="24" src="{{ url_for('static', filename='frogs/24.png') }}" onclick="handleImageClick(this)">
+                    <img id="img25" data-id="25" src="{{ url_for('static', filename='frogs/25.png') }}" onclick="handleImageClick(this)">
+                    <img id="img26" data-id="26" src="{{ url_for('static', filename='frogs/26.png') }}" onclick="handleImageClick(this)">
+                    <img id="img27" data-id="27" src="{{ url_for('static', filename='frogs/27.png') }}" onclick="handleImageClick(this)">
+                    <img id="img28" data-id="28" src="{{ url_for('static', filename='frogs/28.png') }}" onclick="handleImageClick(this)">
+                    <img id="img29" data-id="29" src="{{ url_for('static', filename='frogs/29.png') }}" onclick="handleImageClick(this)">
+                    <img id="img30" data-id="30" src="{{ url_for('static', filename='frogs/30.png') }}" onclick="handleImageClick(this)">
+                    <img id="img31" data-id="31" src="{{ url_for('static', filename='frogs/31.png') }}" onclick="handleImageClick(this)">
+                    <img id="img32" data-id="32" src="{{ url_for('static', filename='frogs/32.png') }}" onclick="handleImageClick(this)">
+                    <img id="img33" data-id="33" src="{{ url_for('static', filename='frogs/33.png') }}" onclick="handleImageClick(this)">
+                    <img id="img34" data-id="34" src="{{ url_for('static', filename='frogs/34.png') }}" onclick="handleImageClick(this)">
+                    <img id="img35" data-id="35" src="{{ url_for('static', filename='frogs/35.png') }}" onclick="handleImageClick(this)">
+                    <img id="img36" data-id="36" src="{{ url_for('static', filename='frogs/36.png') }}" onclick="handleImageClick(this)">
+                    <img id="img37" data-id="37" src="{{ url_for('static', filename='frogs/37.png') }}" onclick="handleImageClick(this)">
+                    <img id="img38" data-id="38" src="{{ url_for('static', filename='frogs/38.png') }}" onclick="handleImageClick(this)">
+                    <img id="img39" data-id="39" src="{{ url_for('static', filename='frogs/39.png') }}" onclick="handleImageClick(this)">
+                    <img id="img40" data-id="40" src="{{ url_for('static', filename='frogs/40.png') }}" onclick="handleImageClick(this)">
+                    <img id="img41" data-id="41" src="{{ url_for('static', filename='frogs/41.png') }}" onclick="handleImageClick(this)">
+                    <img id="img42" data-id="42" src="{{ url_for('static', filename='frogs/42.png') }}" onclick="handleImageClick(this)">
+                    <img id="img43" data-id="43" src="{{ url_for('static', filename='frogs/43.png') }}" onclick="handleImageClick(this)">
+                    <img id="img44" data-id="44" src="{{ url_for('static', filename='frogs/44.png') }}" onclick="handleImageClick(this)">
+                    <img id="img45" data-id="45" src="{{ url_for('static', filename='frogs/45.png') }}" onclick="handleImageClick(this)">
+                    <img id="img46" data-id="46" src="{{ url_for('static', filename='frogs/46.png') }}" onclick="handleImageClick(this)">
+                    <img id="img47" data-id="47" src="{{ url_for('static', filename='frogs/47.png') }}" onclick="handleImageClick(this)">
+                    <img id="img48" data-id="48" src="{{ url_for('static', filename='frogs/48.png') }}" onclick="handleImageClick(this)">
+                    <img id="img49" data-id="49" src="{{ url_for('static', filename='frogs/49.png') }}" onclick="handleImageClick(this)">
+                    <img id="img50" data-id="50" src="{{ url_for('static', filename='frogs/50.png') }}" onclick="handleImageClick(this)">
+                    <img id="img51" data-id="51" src="{{ url_for('static', filename='frogs/51.png') }}" onclick="handleImageClick(this)">
+                    <img id="img52" data-id="52" src="{{ url_for('static', filename='frogs/52.png') }}" onclick="handleImageClick(this)">
+                    <img id="img53" data-id="53" src="{{ url_for('static', filename='frogs/53.png') }}" onclick="handleImageClick(this)">
+                    <img id="img54" data-id="54" src="{{ url_for('static', filename='frogs/54.png') }}" onclick="handleImageClick(this)">
+                    <img id="img55" data-id="55" src="{{ url_for('static', filename='frogs/55.png') }}" onclick="handleImageClick(this)">
+                    <img id="img56" data-id="56" src="{{ url_for('static', filename='frogs/56.png') }}" onclick="handleImageClick(this)">
+                    <img id="img57" data-id="57" src="{{ url_for('static', filename='frogs/57.png') }}" onclick="handleImageClick(this)">
+                    <img id="img58" data-id="58" src="{{ url_for('static', filename='frogs/58.png') }}" onclick="handleImageClick(this)">
+                    <img id="img59" data-id="59" src="{{ url_for('static', filename='frogs/59.png') }}" onclick="handleImageClick(this)">
+                    <img id="img60" data-id="60" src="{{ url_for('static', filename='frogs/60.png') }}" onclick="handleImageClick(this)">
+                    <img id="img61" data-id="61" src="{{ url_for('static', filename='frogs/61.png') }}" onclick="handleImageClick(this)">
+                    <img id="img62" data-id="62" src="{{ url_for('static', filename='frogs/62.png') }}" onclick="handleImageClick(this)">
+                    <img id="img63" data-id="63" src="{{ url_for('static', filename='frogs/63.png') }}" onclick="handleImageClick(this)">
+                    <img id="img64" data-id="64" src="{{ url_for('static', filename='frogs/64.png') }}" onclick="handleImageClick(this)">
+                    <img id="img65" data-id="65" src="{{ url_for('static', filename='frogs/65.png') }}" onclick="handleImageClick(this)">
+                    <img id="img66" data-id="66" src="{{ url_for('static', filename='frogs/66.png') }}" onclick="handleImageClick(this)">
+                    <img id="img67" data-id="67" src="{{ url_for('static', filename='frogs/67.png') }}" onclick="handleImageClick(this)">
+                    <img id="img68" data-id="68" src="{{ url_for('static', filename='frogs/68.png') }}" onclick="handleImageClick(this)">
+                    <img id="img69" data-id="69" src="{{ url_for('static', filename='frogs/69.png') }}" onclick="handleImageClick(this)">
+                    <img id="img70" data-id="70" src="{{ url_for('static', filename='frogs/70.png') }}" onclick="handleImageClick(this)">
+                    <img id="img71" data-id="71" src="{{ url_for('static', filename='frogs/71.png') }}" onclick="handleImageClick(this)">
+                    <img id="img72" data-id="72" src="{{ url_for('static', filename='frogs/72.png') }}" onclick="handleImageClick(this)">
+                    <img id="img73" data-id="73" src="{{ url_for('static', filename='frogs/73.png') }}" onclick="handleImageClick(this)">
+                    <img id="img74" data-id="74" src="{{ url_for('static', filename='frogs/74.png') }}" onclick="handleImageClick(this)">
+                    <img id="img75" data-id="75" src="{{ url_for('static', filename='frogs/75.png') }}" onclick="handleImageClick(this)">
+                    <img id="img76" data-id="76" src="{{ url_for('static', filename='frogs/76.png') }}" onclick="handleImageClick(this)">
+                    <img id="img77" data-id="77" src="{{ url_for('static', filename='frogs/77.png') }}" onclick="handleImageClick(this)">
+                    <img id="img78" data-id="78" src="{{ url_for('static', filename='frogs/78.png') }}" onclick="handleImageClick(this)">
+                    <img id="img79" data-id="79" src="{{ url_for('static', filename='frogs/79.png') }}" onclick="handleImageClick(this)">
+                    <img id="img80" data-id="80" src="{{ url_for('static', filename='frogs/80.png') }}" onclick="handleImageClick(this)">
+                    <img id="img81" data-id="81" src="{{ url_for('static', filename='frogs/81.png') }}" onclick="handleImageClick(this)">
+                    <img id="img82" data-id="82" src="{{ url_for('static', filename='frogs/82.png') }}" onclick="handleImageClick(this)">
+                    <img id="img83" data-id="83" src="{{ url_for('static', filename='frogs/83.png') }}" onclick="handleImageClick(this)">
+                    <img id="img84" data-id="84" src="{{ url_for('static', filename='frogs/84.png') }}" onclick="handleImageClick(this)">
+                    <img id="img85" data-id="85" src="{{ url_for('static', filename='frogs/85.png') }}" onclick="handleImageClick(this)">
+                    <img id="img86" data-id="86" src="{{ url_for('static', filename='frogs/86.png') }}" onclick="handleImageClick(this)">
+                    <img id="img87" data-id="87" src="{{ url_for('static', filename='frogs/87.png') }}" onclick="handleImageClick(this)">
+                    <img id="img88" data-id="88" src="{{ url_for('static', filename='frogs/88.png') }}" onclick="handleImageClick(this)">
+                    <img id="img89" data-id="89" src="{{ url_for('static', filename='frogs/89.png') }}" onclick="handleImageClick(this)">
+                    <img id="img90" data-id="90" src="{{ url_for('static', filename='frogs/90.png') }}" onclick="handleImageClick(this)">
+                    <img id="img91" data-id="91" src="{{ url_for('static', filename='frogs/91.png') }}" onclick="handleImageClick(this)">
+                    <img id="img92" data-id="92" src="{{ url_for('static', filename='frogs/92.png') }}" onclick="handleImageClick(this)">
+                    <img id="img93" data-id="93" src="{{ url_for('static', filename='frogs/93.png') }}" onclick="handleImageClick(this)">
+                    <img id="img94" data-id="94" src="{{ url_for('static', filename='frogs/94.png') }}" onclick="handleImageClick(this)">
+                    <img id="img95" data-id="95" src="{{ url_for('static', filename='frogs/95.png') }}" onclick="handleImageClick(this)">
+                    <img id="img96" data-id="96" src="{{ url_for('static', filename='frogs/96.png') }}" onclick="handleImageClick(this)">
+                    <img id="img97" data-id="97" src="{{ url_for('static', filename='frogs/97.png') }}" onclick="handleImageClick(this)">
+                    <img id="img98" data-id="98" src="{{ url_for('static', filename='frogs/98.png') }}" onclick="handleImageClick(this)">
+                    <img id="img99" data-id="99" src="{{ url_for('static', filename='frogs/99.png') }}" onclick="handleImageClick(this)">
+                    <img id="img100" data-id="100" src="{{ url_for('static', filename='frogs/100.png') }}" onclick="handleImageClick(this)">
+                    <img id="img101" data-id="101" src="{{ url_for('static', filename='frogs/101.png') }}" onclick="handleImageClick(this)">
+                    <img id="img102" data-id="102" src="{{ url_for('static', filename='frogs/102.png') }}" onclick="handleImageClick(this)">
+                    <img id="img103" data-id="103" src="{{ url_for('static', filename='frogs/103.png') }}" onclick="handleImageClick(this)">
+                    <img id="img104" data-id="104" src="{{ url_for('static', filename='frogs/104.png') }}" onclick="handleImageClick(this)">
+                    <img id="img105" data-id="105" src="{{ url_for('static', filename='frogs/105.png') }}" onclick="handleImageClick(this)">
+                    <img id="img106" data-id="106" src="{{ url_for('static', filename='frogs/106.png') }}" onclick="handleImageClick(this)">
+                    <img id="img107" data-id="107" src="{{ url_for('static', filename='frogs/107.png') }}" onclick="handleImageClick(this)">
+                    <img id="img108" data-id="108" src="{{ url_for('static', filename='frogs/108.png') }}" onclick="handleImageClick(this)">
+                    <img id="img109" data-id="109" src="{{ url_for('static', filename='frogs/109.png') }}" onclick="handleImageClick(this)">
+                    <img id="img110" data-id="110" src="{{ url_for('static', filename='frogs/110.png') }}" onclick="handleImageClick(this)">
+                    <img id="img111" data-id="111" src="{{ url_for('static', filename='frogs/111.png') }}" onclick="handleImageClick(this)">
+                    <img id="img112" data-id="112" src="{{ url_for('static', filename='frogs/112.png') }}" onclick="handleImageClick(this)">
+                    <img id="img113" data-id="113" src="{{ url_for('static', filename='frogs/113.png') }}" onclick="handleImageClick(this)">
+                    <img id="img114" data-id="114" src="{{ url_for('static', filename='frogs/114.png') }}" onclick="handleImageClick(this)">
+                    <img id="img115" data-id="115" src="{{ url_for('static', filename='frogs/115.png') }}" onclick="handleImageClick(this)">
+                    <img id="img116" data-id="116" src="{{ url_for('static', filename='frogs/116.png') }}" onclick="handleImageClick(this)">
+                    <img id="img117" data-id="117" src="{{ url_for('static', filename='frogs/117.png') }}" onclick="handleImageClick(this)">
+                    <img id="img118" data-id="118" src="{{ url_for('static', filename='frogs/118.png') }}" onclick="handleImageClick(this)">
+                    <img id="img119" data-id="119" src="{{ url_for('static', filename='frogs/119.png') }}" onclick="handleImageClick(this)">
+                    <img id="img120" data-id="120" src="{{ url_for('static', filename='frogs/120.png') }}" onclick="handleImageClick(this)">
+                    <img id="img121" data-id="121" src="{{ url_for('static', filename='frogs/121.png') }}" onclick="handleImageClick(this)">
+                    <img id="img122" data-id="122" src="{{ url_for('static', filename='frogs/122.png') }}" onclick="handleImageClick(this)">
+                    <img id="img123" data-id="123" src="{{ url_for('static', filename='frogs/123.png') }}" onclick="handleImageClick(this)">
+                    <img id="img124" data-id="124" src="{{ url_for('static', filename='frogs/124.png') }}" onclick="handleImageClick(this)">
+                    <img id="img125" data-id="125" src="{{ url_for('static', filename='frogs/125.png') }}" onclick="handleImageClick(this)">
+                    <img id="img126" data-id="126" src="{{ url_for('static', filename='frogs/126.png') }}" onclick="handleImageClick(this)">
+                    <img id="img127" data-id="127" src="{{ url_for('static', filename='frogs/127.png') }}" onclick="handleImageClick(this)">
+                    <img id="img128" data-id="128" src="{{ url_for('static', filename='frogs/128.png') }}" onclick="handleImageClick(this)">
+                    <img id="img129" data-id="129" src="{{ url_for('static', filename='frogs/129.png') }}" onclick="handleImageClick(this)">
+                    <img id="img130" data-id="130" src="{{ url_for('static', filename='frogs/130.png') }}" onclick="handleImageClick(this)">
+                    <img id="img131" data-id="131" src="{{ url_for('static', filename='frogs/131.png') }}" onclick="handleImageClick(this)">
+                    <img id="img132" data-id="132" src="{{ url_for('static', filename='frogs/132.png') }}" onclick="handleImageClick(this)">
+                    <img id="img133" data-id="133" src="{{ url_for('static', filename='frogs/133.png') }}" onclick="handleImageClick(this)">
+                    <img id="img134" data-id="134" src="{{ url_for('static', filename='frogs/134.png') }}" onclick="handleImageClick(this)">
+                    <img id="img135" data-id="135" src="{{ url_for('static', filename='frogs/135.png') }}" onclick="handleImageClick(this)">
+                    <img id="img136" data-id="136" src="{{ url_for('static', filename='frogs/136.png') }}" onclick="handleImageClick(this)">
+                    <img id="img137" data-id="137" src="{{ url_for('static', filename='frogs/137.png') }}" onclick="handleImageClick(this)">
+                    <img id="img138" data-id="138" src="{{ url_for('static', filename='frogs/138.png') }}" onclick="handleImageClick(this)">
+                    <img id="img139" data-id="139" src="{{ url_for('static', filename='frogs/139.png') }}" onclick="handleImageClick(this)">
+                    <img id="img140" data-id="140" src="{{ url_for('static', filename='frogs/140.png') }}" onclick="handleImageClick(this)">
+                    <img id="img141" data-id="141" src="{{ url_for('static', filename='frogs/141.png') }}" onclick="handleImageClick(this)">
+                    <img id="img142" data-id="142" src="{{ url_for('static', filename='frogs/142.png') }}" onclick="handleImageClick(this)">
+                    <img id="img143" data-id="143" src="{{ url_for('static', filename='frogs/143.png') }}" onclick="handleImageClick(this)">
+                    <img id="img144" data-id="144" src="{{ url_for('static', filename='frogs/144.png') }}" onclick="handleImageClick(this)">
+                    <img id="img145" data-id="145" src="{{ url_for('static', filename='frogs/145.png') }}" onclick="handleImageClick(this)">
+                    <img id="img146" data-id="146" src="{{ url_for('static', filename='frogs/146.png') }}" onclick="handleImageClick(this)">
+                    <img id="img147" data-id="147" src="{{ url_for('static', filename='frogs/147.png') }}" onclick="handleImageClick(this)">
+                    <img id="img148" data-id="148" src="{{ url_for('static', filename='frogs/148.png') }}" onclick="handleImageClick(this)">
+                    <img id="img149" data-id="149" src="{{ url_for('static', filename='frogs/149.png') }}" onclick="handleImageClick(this)">
+                    <img id="img150" data-id="150" src="{{ url_for('static', filename='frogs/150.png') }}" onclick="handleImageClick(this)">
+                    <img id="img151" data-id="151" src="{{ url_for('static', filename='frogs/151.png') }}" onclick="handleImageClick(this)">
+                    <img id="img152" data-id="152" src="{{ url_for('static', filename='frogs/152.png') }}" onclick="handleImageClick(this)">
+                    <img id="img153" data-id="153" src="{{ url_for('static', filename='frogs/153.png') }}" onclick="handleImageClick(this)">
+                </div>
+            </div>
+        </main>
+        
+        <!--_____________________________________________________________________________________________________________________ Footer --
+        <footer> 
+        </footer>
+        <!--_____________________________________________________________________________________________________________________ Script --
+        <script>
+            function updateImageSizes(counters) {
+                for (const [id, count] of Object.entries(counters)) {
+                    const img = document.getElementById(`img${id}`);
+                    if (img) {
+                        // Increase the image size by 2% for each click
+                        const newSize = 100 + count * 2;
+                        img.style.width = `${newSize}%`;
+                    }
+                }
+            }
+
+            async function fetchCounters() {
+                try {
+                    const response = await fetch('/get_counters');
+                    const data = await response.json();
+                    updateImageSizes(data.counters);
+                } catch (error) {
+                    console.error('Error fetching counters:', error);
+                }
+            }
+
+            // Periodically fetch counters and update image sizes
+            setInterval(fetchCounters, 1000); // Fetch every second
+
+            // Initial fetch
+            fetchCounters();
+        </script>
+    </body>
+</html>
+>
