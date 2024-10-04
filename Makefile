@@ -4,12 +4,11 @@ PID_FILE = flask.pid
 # Install dependencies
 install:
 	bash install.sh
-	bash dbt_setup.sh
+	#bash dbt_setup.sh
 
 # Start the Flask app and the Redis server
 setup:
-	redis-server --port 6379 &
-	FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
+	. frosch_venv/bin/activate; redis-server --port 6379; FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
 
 # After a session, process the event log files to Parquet and run the DBT job
 analytics:
