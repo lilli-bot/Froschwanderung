@@ -4,6 +4,7 @@ import os
 import csv
 import datetime
 import pytz
+import uuid
 
 LOG_CLICKS = True
 
@@ -85,6 +86,7 @@ def create_app(redis_client=None):
         timestamp = datetime.datetime.fromisoformat(data.get("timestamp")).astimezone(
             pytz.timezone("Europe/Berlin")
         )
+        event_id = uuid.uuid4()
 
         if LOG_CLICKS:
             # First, log the result to Redis to display in the Froschteich app
@@ -103,11 +105,13 @@ def create_app(redis_client=None):
             if not os.path.exists(log_file_path):
                 with open(log_file_path, "w") as f:
                     writer = csv.writer(f)
-                    writer.writerow(["clicked_image", "not_clicked_image", "timestamp"])
+                    writer.writerow(
+                        ["event_id", "clicked_image", "not_clicked_image", "timestamp"]
+                    )
 
             with open(log_file_path, "a") as f:
                 writer = csv.writer(f)
-                writer.writerow([clicked_image, not_clicked_image, timestamp])
+                writer.writerow([event_id, clicked_image, not_clicked_image, timestamp])
 
         return jsonify({"status": "success"}), 200
 

@@ -1,0 +1,23 @@
+froschwanderung_analytics:
+  outputs:
+    dev:
+      type: duckdb
+      path: analytics/duckdb/dev.duckdb
+      threads: 1
+      extensions:
+        - parquet
+        - ICU
+      settings:
+        TimeZone: Europe/Berlin
+
+    prod:
+      type: duckdb
+      path: analytics/duck_db/prod.duckdb
+      threads: 4
+      extensions:
+        - parquet
+        - ICU
+      settings:
+        TimeZone: Europe/Berlin
+
+  target: dev

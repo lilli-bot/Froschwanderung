@@ -1,0 +1,7 @@
+#sources:
+# - name: app_source
+#  tables:
+#   - name: app_analytics
+#    external:
+#     location: "./results/*.parquet"
+#    format: parquet
