@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   metaduck:
@@ -11,9 +11,15 @@ services:
     mem_limit: 2GB
     environment:
       - MB_PLUGINS_DIR=/home/plugins
+      - MB_DB_FILE=/metabase.db/metabase.db
     volumes:
       - ../duckdb:/container/duckdb
+      - ../metabase_backup:/metabase.db
 
 networks:
   default:
     name: metadb
+
+volumes:
+  metabase_backup:
+    driver: local
