@@ -10,10 +10,9 @@ install:
 setup:
 	. frosch_venv/bin/activate; redis-server --port 6379; FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
 
-# After a session, process the event log files to Parquet and run the DBT job
+# After a exhibition, process the event log files to Parquet and run the DBT job
 analytics:
-	python3 results/analytics_processing.py
-	bash run_dbt.sh
+	. frosch_venv/bin/activate; python3 results/analytics_processing.py; bash run_dbt.sh
 
 # Start Metabase for data visualisation
 start_metabase:
@@ -57,7 +56,8 @@ stop:
 		echo "App stopped and PID file removed."; \
 	else \
 		echo "PID file not found. Is the app running?"; \
-	fi
+	fi;
+	redis-cli shutdown
 
 # Restart the Flask app
 restart:

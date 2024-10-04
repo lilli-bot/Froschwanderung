@@ -33,14 +33,14 @@ models:
     +schema: staging
 
 vars:
-  new_user_after_minutes: 30
-  new_session_after_hours: 1
+  new_user_after_minutes: 1
+  new_exhibition_after_hours: 24
 
 seeds:
   analytics:
-    sessions:
+    exhibitions:
       +column_types:
-        session_start: timestamp_s
-        session_end: timestamp_s
-        session_location: varchar
-        session_description: varchar
+        exhibition_start: timestamp_s
+        exhibition_end: timestamp_s
+        exhibition_location: varchar
+        exhibition_description: varchar

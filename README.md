@@ -36,13 +36,14 @@ It then checks if you have Redis installed on your machine and if not installs i
 There are multiple MAKEFILE commands available to set up and close an exhibition.
 
 - `make setup`: Sets up the Redis server on the designated port, runs the Flask app and records its process ID (`PID`) into a file.
+
   - You can now go into your browser and open the user-input interface at `localhost:5001` and the Froschteich at `localhost:5001/Froschteich`.
     N.B. that these are the standard ports and if you cannot find anything there, the `flask_app.py` script might have changes to the port of the Flask app.
 
   > N.B. You might need to open up a second terminal to execute further commands once the app
   > is running in case the app does not give you the terminal back.
 
-- `make reset_redis`: resets the Redis cache to make all images have 0 clicks again in case the case was still populated from an earlier exhibition.
+- `make reset_redis`: resets the Redis cache to make all images have 0 clicks again in case the database was still populated from an earlier exhibition.
 - `make enable_logging` / `make disable_logging` / `make logging_stauts`: Currently, logging is enabled on startup.
   If you want to test that the user-input frontend works without logging these test clicks,
   you can call the `make disable_logging` command.
@@ -72,8 +73,8 @@ Once you are done, you can stop the Metabase container if you want, using `make 
 
 We are using the Flask framework to process the data created through the app. These are the main functionalities of the backend:
 
-1. Controlling the app through API calls during a session to e.g. start the app, prevent event logging for testing purposes,
-   stop the app, and start the post-processing of all session data.
+1. Controlling the app through API calls during a exhibition to e.g. start the app, prevent event logging for testing purposes,
+   stop the app, and start the post-processing of all exhibition data.
 2. Caching clicks per image in Redis to display on the fly in the Froschteich view.
 3. Saving detailed information about each event in a permanent database for later analysis.
 
@@ -84,7 +85,7 @@ To serve the above purposes, the app has the following endpoints:
 - `enable_logging` / `disable_logging` / `logging_stauts`:
   POSTing to these endpoints controls whether clicking on an image leads to an event being created for processing or not.
   In the beginning of an exhibition, it might be beneficial to test the frontend first and only enable logging after
-  the session has started and guests are using the app.
+  the exhibition has started and guests are using the app.
 - `log_selection`: This is the endpoint that gets called automatically when an image is clicked.
   If logging is enabled, it will perform two tasks.
   1. It will increment the click counter of the winning image in the Redis cache
@@ -126,15 +127,14 @@ The business logic here centres around three identifiable entities in the proces
 
 - The **image**,
 - The **user**,
-- The **session** (i.e. the exhibition or event that the installation was exhibited.);
-  although the "session" naming currently is somewhat ambiguous because in web analytics, idless of a particular user and the subsequent pickup after the idle time is often also referred to as a new "session" or "user session" starting.
+- The **exhibition** (i.e. the exhibition or event that the installation was exhibited.);
 
 We are later interested in the following questions:
 
-- Which image has been the most successful in a given session or across all sessions?
+- Which image has been the most successful in a given exhibition or across all exhibitions?
 - Against which image has a certain image lost/won most often?
 - Can we see any particular patterns about which attributes of an image could predict its success on average?
-- Which session was unusual in the types of image selected?
+- Which exhibition was unusual in the types of image selected?
 
 While the second question is quite easy to answer, the definition of when an
 image is "successful" requires more exploration.
@@ -147,10 +147,7 @@ really like a particular image OR that no good contenders happened to be
 selected in a particular user session.
 
 To mitigate this, we are introducing a
-**penalty factor** for subsequent wins. That means, the more often in a row an
-image has won, the less information we obtain about its general success and the
-more information about the particular user's preference. Thus, to account for the
-diminishing general validity of a win streak of a particular image, we are
+**penalty factor** for subsequent wins. That means, the more often in a row an image has won, the less information we obtain about its general success and the more information about the particular user's preference. Thus, to account for the diminishing general validity of a win streak of a particular image, we are
 discounting each additional win by a multiplicative factor—until it reaches a
 minimum influence after **X** subsequent wins.
 
@@ -159,16 +156,21 @@ minimum influence after **X** subsequent wins.
 If we are to evaluate which properties predict success, we need to add these
 properties as metadata later in the Analytics process.
 
+- You can enter as many properties as you like in the `frogs.csv`, but
+  > [!CAUTION]
+  > You need to give values to any newly initialised column in your CSV. If you do not give values, DuckDB will initialise any **empty** column as integer.
+  > If you wrongly initialised a column, you need to manually delete the seed table in the DuckDB and re-start the `dbt seed` job to make DuckDB sniff the column type again.
+
 ### DBT und DuckDB
 
 - dbt picks up all Parquet files in the "results" folder and reads them in
   through DuckDBs Parquet extension.
 - In the first **staging layer**, all Parquet files are being combined and minor transformations are applied, such as casting
   timestamps to the Berlin timezone.
-  - Most notably, we here also apply the user change, session change and streak logic. Whenever a certain amount of time has passed between logged events, a new `user_id` or `session_id` will be created (i.e. the previous one incremented.) Likewise,
+  - Most notably, we here also apply the user change, exhibition change and streak logic. Whenever a certain amount of time has passed between logged events, a new `user_id` or `exhibition_id` will be created (i.e. the previous one incremented.) Likewise,
     whenever two subsequent events have the same winning image, we increment a streak counter that serves as the basis for our later penalty mechanic.
-- In the **transformation layer**, we add the metadata about images and sessions, as well as calculate the penalty factor.
-- In the **presentation layer**, we create some pre-calculated data marts for viewing aggregates by session or by image.
+- In the **transformation layer**, we add the metadata about images and exhibitions, as well as calculate the penalty factor.
+- In the **presentation layer**, we create some pre-calculated data marts for viewing aggregates by exhibition or by image.
 
 ### Metabase
 

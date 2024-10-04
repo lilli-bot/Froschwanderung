@@ -21,8 +21,8 @@ lagged_timestamps AS (
         not_clicked_image,
         timestamp AT TIME ZONE 'Europe/Berlin' AS timestamp,
         filename,
-        -- indicate when a subsequent row indicates a session or user change
-        {{extract_session_from_timestamp(timestamp_column = 'timestamp')}} AS session_change,
+        -- indicate when a subsequent row indicates a exhibition or user change
+        {{extract_exhibition_from_timestamp(timestamp_column = 'timestamp')}} AS exhibition_change,
         {{extract_user_from_timestamp(timestamp_column = 'timestamp')}} AS user_change,
         CASE WHEN clicked_image = LAG(clicked_image, 1) OVER (ORDER BY timestamp) 
             THEN FALSE
@@ -36,13 +36,13 @@ SELECT
     not_clicked_image,
     timestamp,
     filename,
-    -- every time a user or session changes, increment the ID counter by ID, starting from 1
+    -- every time a user or exhibition changes, increment the ID counter by ID, starting from 1
     SUM(CASE WHEN user_change = TRUE THEN 1 ELSE 0 END) OVER (ORDER BY timestamp) + 1 AS user_id,
-    SUM(CASE WHEN session_change = TRUE THEN 1 ELSE 0 END) OVER (ORDER BY timestamp) + 1 AS session_id,
+    SUM(CASE WHEN exhibition_change = TRUE THEN 1 ELSE 0 END) OVER (ORDER BY timestamp) + 1 AS exhibition_id,
     -- ever time the winner stays the same, the current streak of the winner increments
     SUM(CASE WHEN winner_change = FALSE THEN 1 ELSE 0 END) 
         OVER (PARTITION BY clicked_image ORDER BY timestamp) + 1 AS current_winner_streak,
 FROM lagged_timestamps
--- TODO Impute missing timestamps
+-- TODO: Impute missing timestamps
 WHERE timestamp IS NOT NULL
 ORDER BY timestamp
