@@ -1,4 +1,3 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
 import redis
 import os
 import csv
@@ -8,9 +7,10 @@ import pytz
 import uuid
 import logging
 
+from dateutil import parser
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 LOG_CLICKS = True
-
 
 def create_app(redis_client=None):
 
@@ -98,7 +98,7 @@ def create_app(redis_client=None):
         not_clicked_image = (
             data.get("not_clicked_image").rsplit("/", 1)[-1].rsplit(".", 1)[0]
         )
-        timestamp = datetime.datetime.fromisoformat(data.get("timestamp")).astimezone(
+        timestamp = parser.parse(data.get("timestamp")).astimezone(
             pytz.timezone("Europe/Berlin")
         )
         event_id = uuid.uuid4()
