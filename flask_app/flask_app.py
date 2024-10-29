@@ -49,7 +49,7 @@ def create_app(redis_client=None):
 
     @app.route("/")
     def index():
-        logging.info("Starting app")
+        logging.info("Opened selection screen.")
         return render_template("choose_frogs_refactor.html")
 
     @app.route("/disable_logging", methods=["POST"])
