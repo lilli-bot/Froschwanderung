@@ -8,11 +8,11 @@ install:
 
 # Start the Flask app and the Redis server
 setup:
-	. frosch_venv/bin/activate; redis-server --port 6379; FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
+	. venv/bin/activate; redis-server --port 6379 --daemonize yes; FLASK_APP=flask_app/flask_app.py flask run --port 5001 & echo $$! > $(PID_FILE) &
 
 # After a exhibition, process the event log files to Parquet and run the DBT job
 analytics:
-	. frosch_venv/bin/activate; python3 results/analytics_processing.py; bash run_dbt.sh
+	. venv/bin/activate; python3 results/analytics_processing.py; bash run_dbt.sh
 
 # Start Metabase for data visualisation
 start_metabase:
