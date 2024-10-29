@@ -1,14 +1,29 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
 import redis
 import os
 import csv
 import datetime
+import sys
 import pytz
+import uuid
+import logging
+
+from dateutil import parser
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 LOG_CLICKS = True
 
-
 def create_app(redis_client=None):
+
+    # Configure logging to output to both a file and the console
+    logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("server_log.log"),
+        logging.StreamHandler(sys.stdout)
+        ]
+    )
+
     app = Flask(__name__)
     app.redis_client = (
         redis_client if redis_client else redis.Redis(host="localhost", port=6379, db=0)
@@ -34,6 +49,7 @@ def create_app(redis_client=None):
 
     @app.route("/")
     def index():
+        logging.info("Opened selection screen.")
         return render_template("choose_frogs_refactor.html")
 
     @app.route("/disable_logging", methods=["POST"])
@@ -82,9 +98,10 @@ def create_app(redis_client=None):
         not_clicked_image = (
             data.get("not_clicked_image").rsplit("/", 1)[-1].rsplit(".", 1)[0]
         )
-        timestamp = datetime.datetime.fromisoformat(data.get("timestamp")).astimezone(
+        timestamp = parser.parse(data.get("timestamp")).astimezone(
             pytz.timezone("Europe/Berlin")
         )
+        event_id = uuid.uuid4()
 
         if LOG_CLICKS:
             # First, log the result to Redis to display in the Froschteich app
@@ -103,11 +120,13 @@ def create_app(redis_client=None):
             if not os.path.exists(log_file_path):
                 with open(log_file_path, "w") as f:
                     writer = csv.writer(f)
-                    writer.writerow(["clicked_image", "not_clicked_image", "timestamp"])
+                    writer.writerow(
+                        ["event_id", "clicked_image", "not_clicked_image", "timestamp"]
+                    )
 
             with open(log_file_path, "a") as f:
                 writer = csv.writer(f)
-                writer.writerow([clicked_image, not_clicked_image, timestamp])
+                writer.writerow([event_id, clicked_image, not_clicked_image, timestamp])
 
         return jsonify({"status": "success"}), 200
 
