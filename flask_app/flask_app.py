@@ -3,13 +3,27 @@ import redis
 import os
 import csv
 import datetime
+import sys
 import pytz
 import uuid
+import logging
+
 
 LOG_CLICKS = True
 
 
 def create_app(redis_client=None):
+
+    # Configure logging to output to both a file and the console
+    logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("server_log.log"),
+        logging.StreamHandler(sys.stdout)
+        ]
+    )
+
     app = Flask(__name__)
     app.redis_client = (
         redis_client if redis_client else redis.Redis(host="localhost", port=6379, db=0)
@@ -35,6 +49,7 @@ def create_app(redis_client=None):
 
     @app.route("/")
     def index():
+        logging.info("Starting app")
         return render_template("choose_frogs_refactor.html")
 
     @app.route("/disable_logging", methods=["POST"])
